@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>数字消除</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+			font-family: Arial, sans-serif;
+		}
+		body {
+			background-color: #f0f0f0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			height: 100vh;
+			overflow: hidden;
+		}
+		#game-container {
+			position: relative;
+			width: 90vw;
+			height: 80vh;
+			background-color: white;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(0,0,0,0.1);
+			overflow: hidden;
+		}
+		.number-block {
+			position: absolute;
+			width: 60px;
+			height: 60px;
+			border-radius: 8px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 24px;
+			font-weight: bold;
+			color: white;
+			cursor: pointer;
+			transition: transform 0.2s;
+		}
+		.number-block:active {
+			transform: scale(0.9);
+		}
+		#score-board {
+			margin-bottom: 10px;
+			font-size: 20px;
+			font-weight: bold;
+			color: #333;
+		}
+		#pause-btn {
+			margin-top: 10px;
+			padding: 5px 15px;
+			background-color: #666;
+			color: white;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+		}
+		#pause-menu {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0,0,0,0.7);
+			display: none;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			color: white;
+		}
+		#resume-btn {
+			padding: 8px 20px;
+			margin-top: 20px;
+			background-color: #4CAF50;
+			color: white;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+			font-size: 18px;
+		}
+	</style>
+</head>
+<body>
+	<div id="score-board">分数: 0</div>
+	<div id="game-container">
+		<div id="pause-menu">
+			<h2>游戏暂停</h2>
+			<button id="resume-btn">继续游戏</button>
+		</div>
+	</div>
+	<button id="pause-btn">暂停</button>
+
+	<script>
+		const gameContainer = document.getElementById('game-container');
+		const scoreBoard = document.getElementById('score-board');
+		const pauseBtn = document.getElementById('pause-btn');
+		const pauseMenu = document.getElementById('pause-menu');
+		const resumeBtn = document.getElementById('resume-btn');
+
+		let score = 0;
+		let isPaused = false;
+		let gameInterval;
+		let fallSpeed = 1; // 数字下落速度
+		let spawnRate = 1500; // 生成数字的间隔(毫秒)
+
+		// 数字方块的颜色
+		const colors = {
+			1: '#FF5733',
+			2: '#33FF57',
+			3: '#3357FF',
+			4: '#F3FF33',
+			5: '#FF33F3'
+		};
+
+		// 开始游戏
+		startGame();
+
+		function startGame() {
+			// 定时生成数字方块
+			gameInterval = setInterval(spawnNumber, spawnRate);
+
+			// 让方块下落
+			setInterval(() => {
+				if (!isPaused) {
+					moveBlocksDown();
+				}
+			}, 50);
+		}
+
+		// 生成数字方块
+		function spawnNumber() {
+			if (isPaused) return;
+
+			const number = Math.floor(Math.random() * 5) + 1; // 1-5的随机数
+			const block = document.createElement('div');
+			block.classList.add('number-block');
+			block.textContent = number;
+			block.style.backgroundColor = colors[number];
+			block.dataset.number = number;
+
+			// 随机生成水平位置
+			const maxLeft = gameContainer.clientWidth - 60;
+			const left = Math.floor(Math.random() * maxLeft);
+			block.style.left = `${left}px`;
+			block.style.top = '0px';
+
+			// 点击方块消除并加分
+			block.addEventListener('click', () => {
+				if (!isPaused) {
+					gameContainer.removeChild(block);
+					score += number;
+					scoreBoard.textContent = `分数: ${score}`;
+
+					// 分数增加到一定程度，加快速度和生成频率
+					if (score % 10 === 0) {
+						fallSpeed += 0.1;
+						if (spawnRate > 500) {
+							spawnRate -= 100;
+							clearInterval(gameInterval);
+							gameInterval = setInterval(spawnNumber, spawnRate);
+						}
+					}
+				}
+			});
+
+			gameContainer.appendChild(block);
+		}
+
+		// 移动方块下落
+		function moveBlocksDown() {
+			const blocks = document.getElementsByClassName('number-block');
+			for (let i = 0; i < blocks.length; i++) {
+				const block = blocks[i];
+				const currentTop = parseInt(block.style.top);
+				const newTop = currentTop + fallSpeed;
+
+				// 如果方块超出容器底部，游戏结束
+				if (newTop + 60 > gameContainer.clientHeight) {
+					endGame();
+					return;
+				}
+
+				block.style.top = `${newTop}px`;
+			}
+		}
+
+		// 结束游戏
+		function endGame() {
+			clearInterval(gameInterval);
+			alert(`游戏结束！你的分数是: ${score}`);
+			// 重置游戏
+			const blocks = document.getElementsByClassName('number-block');
+			while (blocks.length > 0) {
+				blocks[0].remove();
+			}
+			score = 0;
+			scoreBoard.textContent = `分数: ${score}`;
+			fallSpeed = 1;
+			spawnRate = 1500;
+			isPaused = false;
+			startGame();
+		}
+
+		// 暂停/继续游戏
+		pauseBtn.addEventListener('click', () => {
+			isPaused = true;
+			pauseMenu.style.display = 'flex';
+		});
+
+		resumeBtn.addEventListener('click', () => {
+			isPaused = false;
+			pauseMenu.style.display = 'none';
+		});
+	</script>
+</body>
+</html>
